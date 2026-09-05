@@ -1,0 +1,26 @@
+# Redirect all requests to WSGI script
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/expedien/public_html/musicstreaming.expedient609.com"
+PassengerBaseURI "/"
+PassengerPython "/home/expedien/virtualenv/public_html/musicstreaming.expedient609.com/3.10/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+</IfModule>
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ musicproject.wsgi.application/$1 [QSA,L]
+
+# Set environment variables
+SetEnv DJANGO_SETTINGS_MODULE musicproject.settings
+
+# Serve static files directly
+AliasMatch ^/static/(.*)$ /home/expedient609/musicstreaming/static/$1
+
+# Protect sensitive files
+<FilesMatch "\.(py|sqlite3|json|env)$">
+Order allow,deny
+Deny from all
+</FilesMatch>

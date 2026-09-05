@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ playlist.name }} - Music Streaming App{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Playlist Header -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+        <div class="md:flex">
+            <div class="md:w-1/3 bg-gradient-to-r from-primary to-secondary flex items-center justify-center p-8">
+                {% if playlist.songs.all %}
+                    <img src="{{ playlist.songs.first.album_cover }}" alt="{{ playlist.name }}" class="w-48 h-48 object-cover rounded-lg shadow-lg">
+                {% else %}
+                    <div class="w-48 h-48 bg-gray-200 rounded-lg shadow-lg flex items-center justify-center">
+                        <i class="fas fa-music text-white text-5xl"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="md:w-2/3 p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">{{ playlist.name }}</h1>
+                        <p class="text-gray-600 mb-4">Created by {{ playlist.user.username }}</p>
+                        <p class="text-gray-600">{{ playlist.songs.count }} songs</p>
+                    </div>
+                    <div class="dropdown relative">
+                        <button class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden">
+                            <button id="rename-playlist-button" class="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                Rename Playlist
+                            </button>
+                            <button id="delete-playlist-button" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">
+                                Delete Playlist
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if playlist.songs.all %}
+                    <div class="mt-6 flex space-x-2">
+                        <button id="play-all-button" class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition flex items-center">
+                            <i class="fas fa-play mr-2"></i> Play All
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rename Playlist Modal -->
+    <div id="rename-playlist-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Rename Playlist</h2>
+                <button class="close-modal-button text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="rename-playlist-form" method="post" action="#">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="new-playlist-name" class="block text-gray-700 font-medium mb-2">New Name</label>
+                    <input type="text" name="name" id="new-playlist-name" value="{{ playlist.name }}" required 
+                           class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                
+                <button type="submit" class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-opacity-80 transition">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Delete Playlist Modal -->
+    <div id="delete-playlist-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Delete Playlist</h2>
+                <button class="close-modal-button text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <p class="mb-6">Are you sure you want to delete "{{ playlist.name }}"? This action cannot be undone.</p>
+            
+            <div class="flex space-x-4">
+                <button class="close-modal-button bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition flex-grow">
+                    Cancel
+                </button>
+                <form id="delete-playlist-form" method="post" action="#" class="flex-grow">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition">
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Songs List -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Songs</h2>
+            
+            {% if playlist.songs.all %}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2 px-4 text-left">#</th>
+                                <th class="py-2 px-4 text-left">Title</th>
+                                <th class="py-2 px-4 text-left">Artist</th>
+                                <th class="py-2 px-4 text-left">Album</th>
+                                <th class="py-2 px-4 text-left">Duration</th>
+                                <th class="py-2 px-4 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for song in playlist.songs.all %}
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="py-3 px-4">{{ forloop.counter }}</td>
+                                    <td class="py-3 px-4 flex items-center">
+                                        <img src="{{ song.album_cover }}" alt="{{ song.album }}" class="w-10 h-10 mr-3 rounded">
+                                        <span class="truncate">{{ song.title }}</span>
+                                    </td>
+                                    <td class="py-3 px-4 truncate">{{ song.artist }}</td>
+                                    <td class="py-3 px-4 truncate">{{ song.album }}</td>
+                                    <td class="py-3 px-4">{{ song.duration|divisibleby:60 }}</td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex space-x-2">
+                                            <button onclick="playSong({id: '{{ song.deezer_id }}', title: '{{ song.title }}', artist: '{{ song.artist }}', albumCover: '{{ song.album_cover }}', previewUrl: '{{ song.preview_url }}' })" 
+                                                    class="text-primary hover:text-opacity-80 transition">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button onclick="toggleFavorite('{{ song.deezer_id }}')" class="text-gray-400 hover:text-red-500 transition">
+                                                <i class="{% if song in user.favorites.all %}fas{% else %}far{% endif %} fa-heart"></i>
+                                            </button>
+                                            <button onclick="removeSongFromPlaylist('{{ song.id }}', '{{ playlist.id }}')" class="text-gray-400 hover:text-red-500 transition">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-music text-primary text-5xl mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">No Songs Yet</h3>
+                    <p class="text-gray-600 mb-4">Search for songs and add them to this playlist.</p>
+                    <a href="{% url 'home' %}" class="inline-block bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition">
+                        Search Songs
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Dropdown functionality
+    const dropdownButton = document.querySelector('.dropdown button');
+    const dropdownMenu = document.querySelector('.dropdown-menu');
+    
+    if (dropdownButton) {
+        dropdownButton.addEventListener('click', function() {
+            dropdownMenu.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.dropdown')) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+    
+    // Modal functionality
+    const renamePlaylistButton = document.getElementById('rename-playlist-button');
+    const deletePlaylistButton = document.getElementById('delete-playlist-button');
+    const renamePlaylistModal = document.getElementById('rename-playlist-modal');
+    const deletePlaylistModal = document.getElementById('delete-playlist-modal');
+    const closeModalButtons = document.querySelectorAll('.close-modal-button');
+    
+    function openModal(modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+    }
+    
+    function closeAllModals() {
+        renamePlaylistModal.classList.add('hidden');
+        deletePlaylistModal.classList.add('hidden');
+        document.body.style.overflow = ''; // Re-enable scrolling
+    }
+    
+    if (renamePlaylistButton) {
+        renamePlaylistButton.addEventListener('click', function() {
+            openModal(renamePlaylistModal);
+            dropdownMenu.classList.add('hidden');
+        });
+    }
+    
+    if (deletePlaylistButton) {
+        deletePlaylistButton.addEventListener('click', function() {
+            openModal(deletePlaylistModal);
+            dropdownMenu.classList.add('hidden');
+        });
+    }
+    
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', closeAllModals);
+    });
+    
+    // Close modals when clicking outside
+    [renamePlaylistModal, deletePlaylistModal].forEach(modal => {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeAllModals();
+            }
+        });
+    });
+    
+    // Close modals with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+    
+    // Play all songs functionality
+    const playAllButton = document.getElementById('play-all-button');
+    if (playAllButton) {
+        playAllButton.addEventListener('click', function() {
+            // Get the first song and play it
+            const firstSongElement = document.querySelector('tbody tr:first-child');
+            if (firstSongElement) {
+                const playButton = firstSongElement.querySelector('.text-primary');
+                if (playButton) {
+                    playButton.click();
+                }
+            }
+        });
+    }
+    
+    // Function to remove song from playlist
+    function removeSongFromPlaylist(songId, playlistId) {
+        if (confirm('Are you sure you want to remove this song from the playlist?')) {
+            fetch(`/remove-from-playlist/${songId}/${playlistId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to reflect changes
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }
+</script>
+{% endblock %}

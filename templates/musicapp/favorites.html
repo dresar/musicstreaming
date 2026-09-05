@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}My Favorites - Music Streaming App{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Favorites Header -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+        <div class="md:flex">
+            <div class="md:w-1/3 bg-gradient-to-r from-primary to-secondary flex items-center justify-center p-8">
+                {% if user_favorites %}
+                    <img src="{{ user_favorites.0.album_cover }}" alt="Favorites" class="w-48 h-48 object-cover rounded-lg shadow-lg">
+                {% else %}
+                    <div class="w-48 h-48 bg-gray-200 rounded-lg shadow-lg flex items-center justify-center">
+                        <i class="fas fa-heart text-white text-5xl"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="md:w-2/3 p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">My Favorites</h1>
+                        <p class="text-gray-600 mb-4">{{ user.username }}</p>
+                        <p class="text-gray-600">{{ user_favorites|length }} songs</p>
+                    </div>
+                </div>
+                
+                {% if user_favorites %}
+                    <div class="mt-6 flex space-x-2">
+                        <button id="play-all-button" class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition flex items-center">
+                            <i class="fas fa-play mr-2"></i> Play All
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Songs List -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Favorite Songs</h2>
+            
+            {% if user_favorites %}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-2 px-4 text-left">#</th>
+                                <th class="py-2 px-4 text-left">Title</th>
+                                <th class="py-2 px-4 text-left">Artist</th>
+                                <th class="py-2 px-4 text-left">Album</th>
+                                <th class="py-2 px-4 text-left">Duration</th>
+                                <th class="py-2 px-4 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for song in user_favorites %}
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="py-3 px-4">{{ forloop.counter }}</td>
+                                    <td class="py-3 px-4 flex items-center">
+                                        <img src="{{ song.album_cover }}" alt="{{ song.album }}" class="w-10 h-10 mr-3 rounded">
+                                        <span class="truncate">{{ song.title }}</span>
+                                    </td>
+                                    <td class="py-3 px-4 truncate">{{ song.artist }}</td>
+                                    <td class="py-3 px-4 truncate">{{ song.album }}</td>
+                                    <td class="py-3 px-4">{{ song.duration|divisibleby:60 }}</td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex space-x-2">
+                                            <button onclick="playSong({id: '{{ song.deezer_id }}', title: '{{ song.title }}', artist: '{{ song.artist }}', albumCover: '{{ song.album_cover }}', previewUrl: '{{ song.preview_url }}' })" 
+                                                    class="text-primary hover:text-opacity-80 transition">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button onclick="toggleFavorite('{{ song.deezer_id }}')" class="text-red-500 hover:text-red-600 transition">
+                                                <i class="fas fa-heart"></i>
+                                            </button>
+                                            <div class="relative group">
+                                                <button class="text-gray-400 hover:text-gray-600 transition">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                                                    {% for playlist in user_playlists %}
+                                                        <button onclick="addToPlaylist('{{ song.deezer_id }}', '{{ playlist.id }}')" 
+                                                                class="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                                            {{ playlist.name }}
+                                                        </button>
+                                                    {% endfor %}
+                                                    {% if not user_playlists %}
+                                                        <div class="px-4 py-2 text-gray-500">No playlists yet</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-heart text-primary text-5xl mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">No Favorite Songs Yet</h3>
+                    <p class="text-gray-600 mb-4">Search for songs and mark them as favorites.</p>
+                    <a href="{% url 'home' %}" class="inline-block bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition">
+                        Search Songs
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Play all songs functionality
+    const playAllButton = document.getElementById('play-all-button');
+    if (playAllButton) {
+        playAllButton.addEventListener('click', function() {
+            // Get the first song and play it
+            const firstSongElement = document.querySelector('tbody tr:first-child');
+            if (firstSongElement) {
+                const playButton = firstSongElement.querySelector('.text-primary');
+                if (playButton) {
+                    playButton.click();
+                }
+            }
+        });
+    }
+    
+    // Function to add song to playlist
+    function addToPlaylist(songId, playlistId) {
+        fetch(`/add-to-playlist/${songId}/${playlistId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Song added to playlist!');
+            } else {
+                alert('Song already in playlist or error occurred.');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
+{% endblock %}

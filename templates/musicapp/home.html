@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Music Streaming App{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Hero Section with Search -->
+    <div class="bg-gradient-to-r from-primary to-secondary rounded-xl p-8 mb-8 text-white">
+        <h1 class="text-3xl md:text-4xl font-bold mb-4">Discover Your Next Favorite Song</h1>
+        <p class="text-lg mb-6">Search for songs, artists, or albums and start streaming instantly.</p>
+        
+        <div class="relative max-w-2xl">
+            <input type="text" id="search-input" placeholder="Search for songs, artists, or albums..." 
+                   class="w-full py-3 px-4 pr-12 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+            <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary text-white p-2 rounded-full hover:bg-opacity-80 transition">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Search Results -->
+    <div id="search-results" class="mb-8 hidden">
+        <h2 class="text-2xl font-bold mb-4">Search Results</h2>
+        <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Results will be populated here via JavaScript -->
+        </div>
+    </div>
+    
+    <!-- Trending Songs -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-4">Trending Songs</h2>
+        {% if trending_songs %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for song in trending_songs %}
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+                        <img src="{{ song.album.cover_medium }}" alt="{{ song.album.title }}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="font-bold truncate">{{ song.title }}</h3>
+                            <p class="text-gray-600 truncate">{{ song.artist.name }}</p>
+                            <div class="mt-4 flex justify-between items-center">
+                                <button onclick="playSong({id: '{{ song.id }}', title: '{{ song.title }}', artist: '{{ song.artist.name }}', albumCover: '{{ song.album.cover_medium }}', previewUrl: '{{ song.preview }}' })" 
+                                        class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition flex items-center">
+                                    <i class="fas fa-play mr-2"></i> Play
+                                </button>
+                                {% if user.is_authenticated %}
+                                    <div class="flex space-x-2">
+                                        <button onclick="toggleFavorite('{{ song.id }}')" class="text-gray-400 hover:text-red-500 transition">
+                                            <i class="far fa-heart"></i>
+                                        </button>
+                                        <div class="relative group">
+                                            <button class="text-gray-400 hover:text-primary transition">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                                                {% if user.playlists.all %}
+                                                    {% for playlist in user.playlists.all %}
+                                                        <button onclick="addToPlaylist('{{ song.id }}', '{{ playlist.id }}')" class="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                                            {{ playlist.name }}
+                                                        </button>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <p class="px-4 py-2 text-gray-500">No playlists yet</p>
+                                                {% endif %}
+                                                <a href="{% url 'playlists' %}" class="block px-4 py-2 text-primary hover:bg-gray-100 border-t">Create Playlist</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500">No trending songs available at the moment.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const searchResults = document.getElementById('search-results');
+    const resultsContainer = document.getElementById('results-container');
+    
+    // Function to handle search
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (query.length === 0) return;
+        
+        // Show loading state
+        resultsContainer.innerHTML = '<div class="col-span-full text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-primary"></i></div>';
+        searchResults.classList.remove('hidden');
+        
+        // Create form data for the POST request
+        const formData = new FormData();
+        formData.append('query', query);
+        
+        // Send search request
+        fetch('{% url "search" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Clear previous results
+            resultsContainer.innerHTML = '';
+            
+            if (data.data && data.data.length > 0) {
+                // Display search results
+                data.data.forEach(song => {
+                    const songElement = document.createElement('div');
+                    songElement.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition';
+                    songElement.innerHTML = `
+                        <img src="${song.album.cover_medium}" alt="${song.album.title}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="font-bold truncate">${song.title}</h3>
+                            <p class="text-gray-600 truncate">${song.artist.name}</p>
+                            <div class="mt-4 flex justify-between items-center">
+                                <button onclick="playSong({id: '${song.id}', title: '${song.title.replace(/'/g, "\\'")}'', artist: '${song.artist.name.replace(/'/g, "\\'")}'', albumCover: '${song.album.cover_medium}', previewUrl: '${song.preview}' })" 
+                                        class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition flex items-center">
+                                    <i class="fas fa-play mr-2"></i> Play
+                                </button>
+                                {% if user.is_authenticated %}
+                                    <div class="flex space-x-2">
+                                        <button onclick="toggleFavorite('${song.id}')" class="text-gray-400 hover:text-red-500 transition">
+                                            <i class="far fa-heart"></i>
+                                        </button>
+                                        <div class="relative group">
+                                            <button class="text-gray-400 hover:text-primary transition">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                                                {% if user.playlists.all %}
+                                                    {% for playlist in user.playlists.all %}
+                                                        <button onclick="addToPlaylist('${song.id}', '{{ playlist.id }}')" class="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100">
+                                                            {{ playlist.name }}
+                                                        </button>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <p class="px-4 py-2 text-gray-500">No playlists yet</p>
+                                                {% endif %}
+                                                <a href="{% url 'playlists' %}" class="block px-4 py-2 text-primary hover:bg-gray-100 border-t">Create Playlist</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(songElement);
+                });
+            } else {
+                // No results found
+                resultsContainer.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">No results found. Try a different search term.</p></div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resultsContainer.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-red-500">An error occurred. Please try again.</p></div>';
+        });
+    }
+    
+    // Event listeners
+    searchButton.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    // Function to toggle favorite status
+    function toggleFavorite(songId) {
+        {% if user.is_authenticated %}
+            fetch(`/toggle-favorite/${songId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update heart icon
+                    const heartIcon = event.target.closest('button').querySelector('i');
+                    if (data.action === 'added') {
+                        heartIcon.className = 'fas fa-heart text-red-500';
+                    } else {
+                        heartIcon.className = 'far fa-heart';
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        {% else %}
+            window.location.href = '{% url "login" %}';
+        {% endif %}
+    }
+    
+    // Function to add song to playlist
+    function addToPlaylist(songId, playlistId) {
+        {% if user.is_authenticated %}
+            fetch(`/add-to-playlist/${songId}/${playlistId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    alert('Song added to playlist!');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        {% else %}
+            window.location.href = '{% url "login" %}';
+        {% endif %}
+    }
+</script>
+{% endblock %}

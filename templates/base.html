@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Music Streaming App{% endblock %}</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366F1',
+                        secondary: '#8B5CF6',
+                        dark: '#1F2937',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+    <!-- Navigation Bar -->
+    <nav class="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <!-- Logo and Brand -->
+                <a href="{% url 'home' %}" class="flex items-center space-x-2">
+                    <i class="fas fa-music text-2xl"></i>
+                    <span class="text-xl font-bold">MusicStream</span>
+                </a>
+                
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-button" class="md:hidden focus:outline-none">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="{% url 'home' %}" class="hover:text-gray-200 transition">Home</a>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'playlists' %}" class="hover:text-gray-200 transition">Playlists</a>
+                        <a href="{% url 'favorites' %}" class="hover:text-gray-200 transition">Favorites</a>
+                        <div class="relative group">
+                            <button class="flex items-center hover:text-gray-200 transition">
+                                <span>{{ user.username }}</span>
+                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                                <a href="{% url 'logout' %}" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">Logout</a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="hover:text-gray-200 transition">Login</a>
+                        <a href="{% url 'register' %}" class="bg-white text-primary px-4 py-2 rounded-full font-medium hover:bg-gray-100 transition">Sign Up</a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="md:hidden hidden pt-4 pb-2">
+                <a href="{% url 'home' %}" class="block py-2 hover:text-gray-200 transition">Home</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'playlists' %}" class="block py-2 hover:text-gray-200 transition">Playlists</a>
+                    <a href="{% url 'favorites' %}" class="block py-2 hover:text-gray-200 transition">Favorites</a>
+                    <a href="{% url 'logout' %}" class="block py-2 hover:text-gray-200 transition">Logout ({{ user.username }})</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="block py-2 hover:text-gray-200 transition">Login</a>
+                    <a href="{% url 'register' %}" class="block py-2 hover:text-gray-200 transition">Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                    <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %} rounded-md">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Music Player (Fixed at bottom) -->
+    <div id="music-player" class="fixed bottom-0 left-0 right-0 bg-dark text-white p-3 shadow-lg transform translate-y-full transition-transform duration-300 ease-in-out">
+        <div class="container mx-auto">
+            <div class="flex items-center justify-between">
+                <!-- Song Info -->
+                <div class="flex items-center space-x-3 w-1/3">
+                    <img id="player-album-art" src="" alt="Album Cover" class="w-12 h-12 rounded hidden md:block">
+                    <div class="truncate">
+                        <p id="player-song-title" class="font-medium truncate">Not Playing</p>
+                        <p id="player-artist" class="text-sm text-gray-400 truncate">-</p>
+                    </div>
+                </div>
+                
+                <!-- Player Controls -->
+                <div class="flex flex-col items-center w-1/3">
+                    <div class="flex items-center space-x-4">
+                        <button id="prev-button" class="text-gray-400 hover:text-white transition" disabled>
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button id="play-pause-button" class="bg-primary w-10 h-10 rounded-full flex items-center justify-center hover:bg-opacity-80 transition">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button id="next-button" class="text-gray-400 hover:text-white transition" disabled>
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="w-full mt-2 flex items-center space-x-2">
+                        <span id="current-time" class="text-xs">0:00</span>
+                        <div class="flex-grow bg-gray-700 rounded-full h-1 relative">
+                            <div id="progress-bar" class="bg-primary h-1 rounded-full w-0"></div>
+                            <div id="progress-handle" class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full hidden"></div>
+                        </div>
+                        <span id="duration" class="text-xs">0:00</span>
+                    </div>
+                </div>
+                
+                <!-- Volume Control -->
+                <div class="hidden md:flex items-center space-x-2 w-1/3 justify-end">
+                    <i id="volume-icon" class="fas fa-volume-up"></i>
+                    <div class="w-24 bg-gray-700 rounded-full h-1 relative">
+                        <div id="volume-bar" class="bg-primary h-1 rounded-full w-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden Audio Element -->
+        <audio id="audio-player"></audio>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-6 mt-auto">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-center md:text-left">&copy; 2025 Eka Syarif Maulana. All rights reserved.</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="hover:text-primary transition"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="hover:text-primary transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="hover:text-primary transition"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Music Player Functionality
+        const audioPlayer = document.getElementById('audio-player');
+        const playPauseButton = document.getElementById('play-pause-button');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const progressBar = document.getElementById('progress-bar');
+        const progressHandle = document.getElementById('progress-handle');
+        const currentTimeDisplay = document.getElementById('current-time');
+        const durationDisplay = document.getElementById('duration');
+        const volumeBar = document.getElementById('volume-bar');
+        const volumeIcon = document.getElementById('volume-icon');
+        const musicPlayer = document.getElementById('music-player');
+        
+        let isPlaying = false;
+        let currentSong = null;
+        
+        // Format time in minutes:seconds
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+        
+        // Update progress bar
+        audioPlayer.addEventListener('timeupdate', function() {
+            const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+            currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime);
+        });
+        
+        // Set up progress bar interaction
+        const progressBarContainer = progressBar.parentElement;
+        progressBarContainer.addEventListener('click', function(e) {
+            const rect = progressBarContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            audioPlayer.currentTime = pos * audioPlayer.duration;
+        });
+        
+        // Play/Pause toggle
+        playPauseButton.addEventListener('click', function() {
+            if (audioPlayer.src) {
+                if (isPlaying) {
+                    audioPlayer.pause();
+                    playPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                } else {
+                    audioPlayer.play();
+                    playPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+                }
+                isPlaying = !isPlaying;
+            }
+        });
+        
+        // Volume control
+        volumeBar.parentElement.addEventListener('click', function(e) {
+            const rect = volumeBar.parentElement.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            audioPlayer.volume = pos;
+            volumeBar.style.width = `${pos * 100}%`;
+            
+            // Update volume icon
+            if (pos === 0) {
+                volumeIcon.className = 'fas fa-volume-mute';
+            } else if (pos < 0.5) {
+                volumeIcon.className = 'fas fa-volume-down';
+            } else {
+                volumeIcon.className = 'fas fa-volume-up';
+            }
+        });
+        
+        // Function to play a song
+        function playSong(songData) {
+            // Show the player if it's hidden
+            musicPlayer.classList.remove('translate-y-full');
+            
+            // Update player UI
+            document.getElementById('player-song-title').textContent = songData.title;
+            document.getElementById('player-artist').textContent = songData.artist;
+            document.getElementById('player-album-art').src = songData.albumCover;
+            document.getElementById('player-album-art').classList.remove('hidden');
+            
+            // Set audio source and play
+            audioPlayer.src = songData.previewUrl;
+            audioPlayer.play();
+            playPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+            isPlaying = true;
+            currentSong = songData;
+            
+            // Update duration once metadata is loaded
+            audioPlayer.addEventListener('loadedmetadata', function() {
+                durationDisplay.textContent = formatTime(audioPlayer.duration);
+            });
+        }
+        
+        // Make the playSong function globally available
+        window.playSong = playSong;
+        
+        // Handle song end
+        audioPlayer.addEventListener('ended', function() {
+            playPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+            isPlaying = false;
+            progressBar.style.width = '0%';
+            currentTimeDisplay.textContent = '0:00';
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}My Playlists - Music Streaming App{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">My Playlists</h1>
+        <button id="create-playlist-button" class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition flex items-center">
+            <i class="fas fa-plus mr-2"></i> Create Playlist
+        </button>
+    </div>
+    
+    <!-- Create Playlist Modal -->
+    <div id="create-playlist-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Create New Playlist</h2>
+                <button id="close-modal-button" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form method="post" action="{% url 'create_playlist' %}">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="playlist-name" class="block text-gray-700 font-medium mb-2">Playlist Name</label>
+                    <input type="text" name="name" id="playlist-name" required 
+                           class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                
+                <button type="submit" class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-opacity-80 transition">
+                    Create Playlist
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Playlists Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if playlists %}
+            {% for playlist in playlists %}
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+                    <div class="h-48 bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
+                        {% if playlist.songs.all %}
+                            <img src="{{ playlist.songs.first.album_cover }}" alt="{{ playlist.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <i class="fas fa-music text-white text-5xl"></i>
+                        {% endif %}
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold text-xl mb-2">{{ playlist.name }}</h3>
+                        <p class="text-gray-600 mb-4">{{ playlist.songs.count }} songs</p>
+                        <a href="{% url 'playlist_detail' playlist.id %}" class="inline-block bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition">
+                            View Playlist
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                <i class="fas fa-music text-primary text-5xl mb-4"></i>
+                <h3 class="text-2xl font-bold mb-2">No Playlists Yet</h3>
+                <p class="text-gray-600 mb-4">Create your first playlist to start organizing your favorite songs.</p>
+                <button id="empty-create-button" class="bg-primary text-white px-4 py-2 rounded-full hover:bg-opacity-80 transition">
+                    Create Your First Playlist
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal functionality
+    const createPlaylistButton = document.getElementById('create-playlist-button');
+    const createPlaylistModal = document.getElementById('create-playlist-modal');
+    const closeModalButton = document.getElementById('close-modal-button');
+    const emptyCreateButton = document.getElementById('empty-create-button');
+    
+    function openModal() {
+        createPlaylistModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+    }
+    
+    function closeModal() {
+        createPlaylistModal.classList.add('hidden');
+        document.body.style.overflow = ''; // Re-enable scrolling
+    }
+    
+    if (createPlaylistButton) {
+        createPlaylistButton.addEventListener('click', openModal);
+    }
+    
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', closeModal);
+    }
+    
+    if (emptyCreateButton) {
+        emptyCreateButton.addEventListener('click', openModal);
+    }
+    
+    // Close modal when clicking outside
+    createPlaylistModal.addEventListener('click', function(event) {
+        if (event.target === createPlaylistModal) {
+            closeModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !createPlaylistModal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+</script>
+{% endblock %}
